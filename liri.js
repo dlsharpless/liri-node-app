@@ -143,7 +143,8 @@ const run = function () {
             doWhatItSays(inquiry);
             break;
         default:
-            doubleLog("\nCommand not found.");
+            console.log("Command not found.");
+            writeLog("\nCommand not found.");
     }
 }
 
