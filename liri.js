@@ -21,12 +21,12 @@ const doubleLog = function (logData) {
 }
 
 const concertThis = function (artist) {
+    if (!artist) {
+        return doubleLog("Artist not found.");
+    }
     request(`https://rest.bandsintown.com/artists/${artist}/events?app_id=${keys.omdb.id}`, function (error, response, body) {
         if (error) {
             return doubleLog(error);
-        }
-        if (!artist) {
-            return doubleLog("Artist not found.");
         }
         if (body.length > 20) {
             let bodyObj = JSON.parse(body);
@@ -124,25 +124,26 @@ const doWhatItSays = function () {
 }
 
 const run = function () {
+    let inquiry = process.argv.slice(3).join(" ").trim();
     switch (process.argv[2]) {
         case "concert-this":
-            writeLog(`\nconcert-this,"${process.argv.slice(3).join(" ").trim() || ""}"`);
-            concertThis(process.argv.slice(3).join(" ").trim());
+            writeLog(`\nconcert-this,"${inquiry || ""}"`);
+            concertThis(inquiry);
             break;
         case "spotify-this-song":
-            writeLog(`\nspotify-this-song,"${process.argv.slice(3).join(" ").trim() || ""}"`);
-            spotifyThisSong(process.argv.slice(3).join(" ").trim());
+            writeLog(`\nspotify-this-song,"${inquiry || ""}"`);
+            spotifyThisSong(inquiry);
             break;
         case "movie-this":
-            writeLog(`\nmovie-this,"${process.argv.slice(3).join(" ").trim() || ""}"`);
-            movieThis(process.argv.slice(3).join(" ").trim());
+            writeLog(`\nmovie-this,"${inquiry || ""}"`);
+            movieThis(inquiry);
             break;
         case "do-what-it-says":
-            writeLog(`\ndo-what-it-says,"${process.argv.slice(3).join(" ").trim() || ""}"`);
-            doWhatItSays(process.argv.slice(3).join(" ").trim());
+            writeLog(`\ndo-what-it-says,"${inquiry || ""}"`);
+            doWhatItSays(inquiry);
             break;
         default:
-            doubleLog("\nCommand not found.\n");
+            doubleLog("\nCommand not found.");
     }
 }
 
