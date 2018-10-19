@@ -1,64 +1,121 @@
 require("dotenv").config();
-
-// const dotenv = require("dotenv");
 const fs = require("fs");
 const moment = require("moment");
 const request = require("request");
-
 const keys = require("./keys.js");
-
 const Spotify = require("node-spotify-api");
-const bandsintown = require("bandsintown");
-const omdb = require("omdb");
-
 const spotify = new Spotify(keys.spotify);
 
-const constructInquiry = function () {
-    let inquiry = process.argv[3];
-    for (i = 4; i < process.argv.length; i++) {
-        inquiry += ` ${process.argv[i]}`;
-    }
-    if (inquiry) {
-        inquiry = inquiry.trim();
-    }
-    return inquiry;
-}
-
-const concertThis = function () {
-
-}
-
-const spotifyThisSong = function (input) {
-    spotify.search({ type: "track", query: input || "What's My Age Again", limit: 10 }, function (err, data) {
-        if (err) {
-            return console.log(`Error occurred: ${err}`);
+const writeLog = function (logData) {
+    logData += "\n";
+    fs.appendFile("log.txt", logData, function (error) {
+        if (error) {
+            return doubleLog(error);
         }
-        console.log(`Artist: ${data.tracks.items[0].artists[0].name}`);
-        console.log(`Song title: ${data.tracks.items[0].name}`);
-        console.log(`Preview song: ${data.tracks.items[0].preview_url}`);
-        console.log(`Album: ${data.tracks.items[0].album.name}`);
     })
 }
 
-const movieThis = function (input) {
-    omdb.search(input || "Mr. Nobody", function(err, movies) {
-        if(err) {
-            return console.error(err);
+const doubleLog = function (logData) {
+    console.log(logData);
+    writeLog(logData);
+}
+
+const concertThis = function (artist) {
+    request(`https://rest.bandsintown.com/artists/${artist}/events?app_id=${keys.omdb.id}`, function (error, response, body) {
+        if (error) {
+            return doubleLog(error);
         }
-        if(movies.length < 1) {
-            return console.log('No movies were found!');
+        if (!artist) {
+            return doubleLog("Artist not found.");
         }
-        movies.forEach(function(movie) {
-            console.log('%s (%d)', movie.title, movie.year);
-        });
-    });
+        if (body.length > 20) {
+            let bodyObj = JSON.parse(body);
+            for (i = 0; i < bodyObj.length; i++) {
+                doubleLog(`Venue: ${bodyObj[i].venue.name || "N/A"}`);
+                if (bodyObj[i].venue.region) {
+                    doubleLog(`Location: ${bodyObj[i].venue.city || "N/A"}, ${bodyObj[i].venue.region}, ${bodyObj[i].venue.country || "N/A"}`);
+                } else {
+                    doubleLog(`Location: ${bodyObj[i].venue.city || "N/A"}, ${bodyObj[i].venue.country || "N/A"}`);
+                }
+                doubleLog(`Date: ${moment(bodyObj[i].datetime).format("l") || "N/A"}`);
+            }
+        } else {
+            return doubleLog("Artist not found.");
+        }
+    })
+}
+
+const spotifyThisSong = function (song) {
+    spotify.search({ type: "track", query: song || "What's My Age Again", limit: 1 }, function (err, data) {
+        if (err) {
+            return doubleLog(`Error occurred: ${err}`);
+        }
+        if (data.tracks.items[0]) {
+            let trackObj = data.tracks.items[0];
+            if (trackObj.artists) {
+                if (trackObj.artists[0]) {
+                    doubleLog(`Artist: ${trackObj.artists[0].name || "N/A"}`);
+                } else {
+                    doubleLog("Artist: N/A");
+                }
+            } else {
+                doubleLog("Artist: N/A");
+            }
+            doubleLog(`Song title: ${trackObj.name || "N/A"}`);
+            doubleLog(`Preview song: ${trackObj.preview_url || "N/A"}`);
+            if (trackObj.album) {
+                doubleLog(`Album: ${trackObj.album.name || "N/A"}`);
+            } else {
+                doubleLog("Album: N/A");
+            }
+        } else {
+            return (doubleLog("Song not found."));
+        }
+    })
+}
+
+const movieThis = function (movie) {
+    request(`http://www.omdbapi.com/?apikey=${keys.omdb.id}&t=${movie || "Mr. Nobody"}`, function (error, response, body) {
+        if (error) {
+            return doubleLog(error);
+        }
+        let bodyObj = JSON.parse(body);
+        if (bodyObj.Title) {
+            doubleLog(`Title: ${bodyObj.Title}`);
+        } else {
+            return (doubleLog("Title not found."));
+        }
+        doubleLog(`Year: ${bodyObj.Year || "N/A"}`);
+        if (bodyObj.Ratings) {
+            if (bodyObj.Ratings[0]) {
+                if (bodyObj.Ratings[0].Source && bodyObj.Ratings[0].Value) {
+                    for (i = 0; i < bodyObj.Ratings.length; i++) {
+                        if (bodyObj.Ratings[i].Source === "Internet Movie Database") {
+                            bodyObj.Ratings[i].Source = "IMDb";
+                        }
+                        doubleLog(`${bodyObj.Ratings[i].Source} Rating: ${bodyObj.Ratings[i].Value || "N/A"}`);
+                    }
+                } else {
+                    doubleLog("IMDb Rating: N/A");
+                }
+            } else {
+                doubleLog("IMDb Rating: N/A");
+            }
+        } else {
+            doubleLog("IMDb Rating: N/A");
+        }
+        doubleLog(`Country: ${bodyObj.Country || "N/A"}`);
+        doubleLog(`Language: ${bodyObj.Language || "N/A"}`);
+        doubleLog(`Plot: ${bodyObj.Plot || "N/A"}`);
+        doubleLog(`Actors: ${bodyObj.Actors || "N/A"}`);
+    })
 }
 
 const doWhatItSays = function () {
-    fs.readFile("random.txt", "utf8", function(error, data) {
+    fs.readFile("random.txt", "utf8", function (error, data) {
         if (error) {
-            return console.log(error);
-        }  
+            return doubleLog(error);
+        }
         let arguments = data.split(",");
         process.argv[2] = arguments[0];
         process.argv[3] = arguments[1].replace(/"/g, "");
@@ -66,52 +123,27 @@ const doWhatItSays = function () {
     })
 }
 
-const run = function() {
+const run = function () {
     switch (process.argv[2]) {
         case "concert-this":
-            concertThis(constructInquiry());
+            writeLog(`\nconcert-this,"${process.argv.slice(3).join(" ").trim() || ""}"`);
+            concertThis(process.argv.slice(3).join(" ").trim());
             break;
         case "spotify-this-song":
-            spotifyThisSong(constructInquiry());
+            writeLog(`\nspotify-this-song,"${process.argv.slice(3).join(" ").trim() || ""}"`);
+            spotifyThisSong(process.argv.slice(3).join(" ").trim());
             break;
         case "movie-this":
-            movieThis(constructInquiry());
+            writeLog(`\nmovie-this,"${process.argv.slice(3).join(" ").trim() || ""}"`);
+            movieThis(process.argv.slice(3).join(" ").trim());
             break;
         case "do-what-it-says":
-            doWhatItSays(constructInquiry());
+            writeLog(`\ndo-what-it-says,"${process.argv.slice(3).join(" ").trim() || ""}"`);
+            doWhatItSays(process.argv.slice(3).join(" ").trim());
             break;
         default:
-            console.log("Command not found.");
+            doubleLog("\nCommand not found.\n");
     }
 }
 
 run();
-
-// 1. `node liri.js concert-this <artist/band name here>`
-
-//    * This will search the Bands in Town Artist Events API (`https://rest.bandsintown.com/artists/${artist}/events?app_id=codingbootcamp`) for an artist and render the following information about each event to the terminal:
-
-//      * Name of the venue
-
-//      * Venue location
-
-//      * Date of the Event (use moment to format this as "MM/DD/YYYY")
-
-// 3. `node liri.js movie-this '<movie name here>'`
-
-//    * This will output the following information to your terminal/bash window:
-
-//      ```
-//        * Title of the movie.
-//        * Year the movie came out.
-//        * IMDB Rating of the movie.
-//        * Rotten Tomatoes Rating of the movie.
-//        * Country where the movie was produced.
-//        * Language of the movie.
-//        * Plot of the movie.
-//        * Actors in the movie.
-//      ```
-
-//    * If the user doesn't type a movie in, the program will output data for the movie 'Mr. Nobody.'
-
-//    * You'll use the request package to retrieve data from the OMDB API. Like all of the in-class activities, the OMDB API requires an API key. You may use `trilogy`.
