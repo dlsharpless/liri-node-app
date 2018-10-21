@@ -132,7 +132,7 @@ const run = function () {
             break;
         default:
             console.log("Command not found.");
-            writeLog(`\n${process.argv[2]} ${inquiry}`);
+            writeLog(`\n${process.argv[2]},"${inquiry}"`);
             writeLog("Command not found.");
     }
 }
