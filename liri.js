@@ -22,7 +22,7 @@ const doubleLog = function (logData) {
 
 const concertThis = function (artist) {
     if (!artist) {
-        return doubleLog("Artist not found.");
+        return doubleLog("You must include an artist name.");
     }
     request(`https://rest.bandsintown.com/artists/${artist}/events?app_id=${keys.omdb.id}`, function (error, response, body) {
         if (error) {
@@ -52,14 +52,10 @@ const spotifyThisSong = function (song) {
         }
         if (data.tracks.items[0]) {
             let trackObj = data.tracks.items[0];
-            if (trackObj.artists) {
-                if (trackObj.artists[0]) {
-                    doubleLog(`Artist: ${trackObj.artists[0].name || "N/A"}`);
-                } else {
-                    doubleLog("Artist: N/A");
-                }
-            } else {
+            if (!trackObj.artists || !trackObj.artists[0]) {
                 doubleLog("Artist: N/A");
+            } else {
+                doubleLog(`Artist: ${trackObj.artists[0].name || "N/A"}`);
             }
             doubleLog(`Song title: ${trackObj.name || "N/A"}`);
             doubleLog(`Preview song: ${trackObj.preview_url || "N/A"}`);
@@ -86,23 +82,15 @@ const movieThis = function (movie) {
             return (doubleLog("Title not found."));
         }
         doubleLog(`Year: ${bodyObj.Year || "N/A"}`);
-        if (bodyObj.Ratings) {
-            if (bodyObj.Ratings[0]) {
-                if (bodyObj.Ratings[0].Source && bodyObj.Ratings[0].Value) {
-                    for (i = 0; i < bodyObj.Ratings.length; i++) {
-                        if (bodyObj.Ratings[i].Source === "Internet Movie Database") {
-                            bodyObj.Ratings[i].Source = "IMDb";
-                        }
-                        doubleLog(`${bodyObj.Ratings[i].Source} Rating: ${bodyObj.Ratings[i].Value || "N/A"}`);
-                    }
-                } else {
-                    doubleLog("IMDb Rating: N/A");
-                }
-            } else {
-                doubleLog("IMDb Rating: N/A");
-            }
-        } else {
+        if (!bodyObj.Ratings || !bodyObj.Ratings[0] || !bodyObj.Ratings[0].Source || !bodyObj.Ratings[0].Value) {
             doubleLog("IMDb Rating: N/A");
+        } else {
+            for (i = 0; i < bodyObj.Ratings.length; i++) {
+                if (bodyObj.Ratings[i].Source === "Internet Movie Database") {
+                    bodyObj.Ratings[i].Source = "IMDb";
+                }
+                doubleLog(`${bodyObj.Ratings[i].Source} Rating: ${bodyObj.Ratings[i].Value || "N/A"}`);
+            }
         }
         doubleLog(`Country: ${bodyObj.Country || "N/A"}`);
         doubleLog(`Language: ${bodyObj.Language || "N/A"}`);
@@ -144,7 +132,8 @@ const run = function () {
             break;
         default:
             console.log("Command not found.");
-            writeLog("\nCommand not found.");
+            writeLog(`\n${process.argv[2]} ${inquiry}`);
+            writeLog("Command not found.");
     }
 }
 
